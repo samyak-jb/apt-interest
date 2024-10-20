@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMI Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f7f7f7;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2d2d2d;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+        input[type="number"], input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            box-sizing: border-box;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .hidden {
+            display: none;
+        }
+        canvas {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="logo.png" alt="APT Interest Logo" style="width: 200px; display: block; margin-bottom: 20px;">
+        <h1>EMI Calculator</h1>
+        <form id="emi-form">
+            <label for="principal">Loan Amount (Principal):</label>
+            <input type="number" id="principal" required>
+
+            <label for="interest">Annual Interest Rate (%):</label>
+            <input type="number" id="interest" required>
+
+            <label for="duration">Loan Duration (Years):</label>
+            <input type="number" id="duration" required>
+
+            <label for="start-date">Loan Start Date:</label>
+            <input type="date" id="start-date" required>
+
+            <!-- Principal Increase Section -->
+            <label>Would you like to increase the loan amount later?</label>
+            <input type="radio" name="increase-loan" value="yes" id="increase-yes"> Yes
+            <input type="radio" name="increase-loan" value="no" id="increase-no" checked> No
+
+            <div id="increase-details" class="hidden">
+                <label for="increase-frequency">How Many Increases:</label>
+                <input type="number" id="increase-frequency">
+                <div id="increase-inputs"></div>
+            </div>
+
+            <!-- One-time Repayment Section -->
+            <label>Would you like to make a one-time repayment?</label>
+            <input type="radio" name="one-time-repay" value="yes" id="repay-yes"> Yes
+            <input type="radio" name="one-time-repay" value="no" id="repay-no" checked> No
+
+            <div id="repayment-details" class="hidden">
+                <label for="repayment-frequency">How Many Repayments:</label>
+                <input type="number" id="repayment-frequency">
+                <div id="repayment-inputs"></div>
+            </div>
+
+            <button type="submit">Calculate EMI</button>
+        </form>
+
+        <div id="schedule" class="hidden">
+            <h2>EMI Repayment Schedule</h2>
+            <div id="schedule-details"></div>
+            <canvas id="balanceChart"></canvas>
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const increaseYes = document.getElementById('increase-yes');
+            const increaseNo = document.getElementById('increase-no');
+            const increaseDetails = document.getElementById('increase-details');
+            const repayYes = document.getElementById('repay-yes');
+            const repayNo = document.getElementById('repay-no');
+            const repaymentDetails = document.getElementById('repayment-details');
+
+            // Show/Hide Loan Increase Options
+            increaseYes.addEventListener('change', () => {
+                increaseDetails.classList.remove('hidden');
+            });
+            increaseNo.addEventListener('change', () => {
+                increaseDetails.classList.add('hidden');
+            });
+
+            // Show/Hide Repayment Options
+            repayYes.addEventListener('change', () => {
+                repaymentDetails.classList.remove('hidden');
+            });
+            repayNo.addEventListener('change', () => {
+                repaymentDetails.classList.add('hidden');
+            });
+
+            // Handle form submission
+            const form = document.getElementById('emi-form');
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                // Get user input values
+                const principal = parseFloat(document.getElementById('principal').value);
+                const interest = parseFloat(document.getElementById('interest').value);
+                const duration = parseFloat(document.getElementById('duration').value);
+                const startDate = new Date(document.getElementById('start-date').value);
+
+                // Get EMI
+                const monthlyRate = interest / (12 * 100);
+                const totalMonths = duration * 12;
+                const emi = principal * monthlyRate * (1 + monthlyRate)**totalMonths / ((1 + monthlyRate)**totalMonths - 1);
+
+                // Display Schedule - Simplified (no increase/repayment logic yet)
+                document.getElementById('schedule-details').innerHTML = `EMI: ₹${emi.toFixed(2)} for ${totalMonths} months`;
+
+                // Show schedule
+                document.getElementById('schedule').classList.remove('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
+
