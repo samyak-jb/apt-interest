@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMI Calculator - Apt Interest</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            padding: 0;
+            margin: 0;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo img {
+            max-width: 150px;
+        }
+        h1, h2 {
+            color: #0066cc;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .chart-container {
+            margin: 20px 0;
+            width: 80%;
+            height: 400px;
+            text-align: center;
+        }
+        .chart-container canvas {
+            max-width: 100%;
+        }
+        .summary {
+            margin-top: 20px;
+        }
+        .summary p {
+            font-size: 16px;
+            font-weight: bold;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <!-- Logo Section -->
+    <div class="logo">
+        <img src="logo.png" alt="Apt Interest Logo">
+    </div>
+
+    <h1>EMI Calculator</h1>
+
+    <!-- Loan Inputs Section -->
+    <div>
+        <label for="loanAmount">Loan Amount (₹): </label>
+        <input type="number" id="loanAmount" placeholder="Enter loan amount">
+        <br>
+        <label for="interestRate">Annual Interest Rate (%): </label>
+        <input type="number" id="interestRate" placeholder="Enter annual interest rate">
+        <br>
+        <label for="loanDuration">Loan Duration (Years): </label>
+        <input type="number" id="loanDuration" placeholder="Enter loan duration in years">
+        <br>
+        <label for="startDate">Loan Start Date (YYYY-MM-DD): </label>
+        <input type="date" id="startDate">
+        <br>
+        <label for="oneTimeRepayment">One-Time Repayment (₹): </label>
+        <input type="number" id="oneTimeRepayment" placeholder="Enter repayment amount">
+        <br>
+        <label for="repaymentMonth">Repayment After (Months): </label>
+        <input type="number" id="repaymentMonth" placeholder="Enter month for one-time repayment">
+        <br>
+        <label for="principalIncrease">Increase Principal By (₹): </label>
+        <input type="number" id="principalIncrease" placeholder="Enter amount to increase principal">
+        <br>
+        <label for="increaseMonth">Increase Principal After (Months): </label>
+        <input type="number" id="increaseMonth" placeholder="Enter month for one-time principal increase">
+        <br>
+        <button onclick="calculateEMI()">Calculate EMI</button>
+    </div>
+
+    <!-- EMI Schedule Table -->
+    <h2>EMI Repayment Schedule</h2>
+    <table id="emiSchedule">
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th>Date</th>
+                <th>Opening Balance (₹)</th>
+                <th>EMI (₹)</th>
+                <th>Interest Paid (₹)</th>
+                <th>Principal Paid (₹)</th>
+                <th>Closing Balance (₹)</th>
+                <th>Note</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- EMI schedule rows will be dynamically generated here -->
+        </tbody>
+    </table>
+
+    <!-- Visualization Charts -->
+    <div class="chart-container">
+        <canvas id="balanceChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="splitChart"></canvas>
+    </div>
+
+    <!-- Loan Summary -->
+    <div class="summary">
+        <p id="initialLoanAmount">Initial Loan Amount: </p>
+        <p id="totalInterestCharged">Total Interest Charged: </p>
+        <p id="totalAmountPaid">Total Amount to be Paid (Principal + Interest): </p>
+    </div>
+</div>
+
+<script>
+    // Automatically set today's date for the start date input field
+    document.getElementById('startDate').valueAsDate = new Date();
+
+    function calculateEMI() {
+        // Fetch loan details from inputs
+        const P = parseFloat(document.getElementById('loanAmount').value);
+        const r = parseFloat(document.getElementById('interestRate').value);
+        const t = parseInt(document.getElementById('loanDuration').value);
+        const startDateInput = document.getElementById('startDate').value;
+        const oneTimeRepayment = parseFloat(document.getElementById('oneTimeRepayment').value || 0);
+        const repaymentMonth = parseInt(document.getElementById('repaymentMonth').value || 0);
+        const principalIncrease = parseFloat(document.getElementById('principalIncrease').value || 0);
+        const increaseMonth = parseInt(document.getElementById('increaseMonth').value || 0);
+        
+        if (isNaN(P) || isNaN(r) || isNaN(t)) {
+            alert("Please enter valid values for loan amount, interest rate, and duration.");
+            return;
+        }
+
+        const startDate = new Date(startDateInput);
+        const initialAmount = P;
+        const emi = P * (r / (12 * 100)) * Math.pow(1 + (r / (12 * 100)), t * 12) / (Math.pow(1 + (r / (12 * 100)), t * 12) - 1);
+        let remainingBalance = P;
+        let totalInterestPaid = 0;
+        let totalPrincipalPaid = 0;
+        let balanceHistory = [];
+        let scheduleTable = '';
+
+        // Iterate over the duration of the loan in months
+        for (let month = 1; month <= t * 12; month++) {
+            const openingBalance = remainingBalance;
+            const interestPayment = remainingBalance * r / (12 * 100);
+            const principalPayment = emi - interestPayment;
+            remainingBalance -= principalPayment;
+            totalInterestPaid += interestPayment;
+            totalPrincipalPaid += principalPayment;
+
+            // Apply one-time repayment if specified and in the correct month
+            if (month === repaymentMonth && oneTimeRepayment > 0) {
+                remainingBalance -= oneTimeRepayment;
+            }
+
+            // Apply principal increase at the specified month
+            if (month === increaseMonth && principalIncrease > 0) {
+                remainingBalance += principalIncrease;
+            }
+
+            // Update balance history for chart
+            balanceHistory.push(remainingBalance);
+
+            // Create schedule row
+            const monthDate = new Date(startDate);
+            monthDate.setMonth(startDate.getMonth() + month - 1);
+            const formattedDate = monthDate.toISOString().split('T')[0];
+
+            scheduleTable += `<tr>
+                <td>${month}</td>
+                <td>${formattedDate}</td>
+                <td>₹${openingBalance.toFixed(2)}</td>
+                <td>₹${emi.toFixed(2)}</td>
+                <td>₹${interestPayment.toFixed(2)}</td>
+                <td>₹${principalPayment.toFixed(2)}</td>
+                <td>₹${remainingBalance.toFixed(2)}</td>
+                <td>${month === repaymentMonth ? 'One-Time Repayment' : month === increaseMonth ? 'Principal Increase' : ''}</td>
+            </tr>`;
+        }
+
+        // Display the updated EMI schedule in the table
+        document.querySelector('#emiSchedule tbody').innerHTML = scheduleTable;
+
+        // Update Balance Chart
+        const ctx = document.getElementById('balanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({ length: balanceHistory.length }, (_, i) => i + 1),
+                datasets: [{
+                    label: 'Remaining Balance',
+                    data: balanceHistory,
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 2,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                title: {
+                    display: true,
+                    text: 'Remaining Balance Over Time'
+                }
+            }
+        });
+
+        // Display Pie Chart for Principal vs Interest Paid
+        const splitCtx = document.getElementById('splitChart').getContext('2d');
+        new Chart(splitCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Total Principal Paid', 'Total Interest Paid'],
+                datasets: [{
+                    data: [totalPrincipalPaid, totalInterestPaid],
+                    backgroundColor: ['#4caf50', '#f44336']
+                }]
+            },
+            options: {
+                responsive: true,
+                title: {
+                    display: true,
+                    text: 'Principal vs Interest Split'
+                }
+            }
+        });
+
+        // Display Summary
+        document.getElementById('initialLoanAmount').innerText = `Initial Loan Amount: ₹${initialAmount.toFixed(2)}`;
+        document.getElementById('totalInterestCharged').innerText = `Total Interest Charged: ₹${totalInterestPaid.toFixed(2)}`;
+        document.getElementById('totalAmountPaid').innerText = `Total Amount to be Paid (Principal + Interest): ₹${(initialAmount + totalInterestPaid).toFixed(2)}`;
+    }
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
